@@ -339,7 +339,7 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
                                     code: code
                             )
                     )
-                    Utilities.putZipEntry(zipStream, "advImport\\" + code + ".xml", content.bytes)
+                    Utilities.putZipEntry(zipStream, "advImports\\" + code + ".xml", content.bytes)
                 }
                 modules.each { code, object ->
                     String content = object.getScriptElement().getBody()
