@@ -123,7 +123,7 @@ class SrcService {
         return metaStorageService.get('advimport')
     }
 
-    Map<String, ImportConfigContainer> getAdvImports(Boolean all, List<String> uuids) {
+    Map<String, ImportConfigContainer> getAdvImports(Boolean all, List<String> uuids, List<String> excluded = null) {
         Map<String, ImportConfigContainer> map = [:]
         if (all) {
             getAllAdvImports().each {
@@ -133,6 +133,9 @@ class SrcService {
             uuids.each {
                 map.put(it, getAdvImport(it))
             }
+        }
+        if(excluded) excluded.each {
+            map.remove(it)
         }
         return map
     }
@@ -147,18 +150,21 @@ class SrcService {
         return scriptStorageService.getScripts()
     }
 
-    Map<String, ru.naumen.metainfo.shared.script.Script> getScripts(Boolean all, List<String> codes) {
-        Map<String, ru.naumen.metainfo.shared.script.Script> scriptMap = [:]
+    Map<String, ru.naumen.metainfo.shared.script.Script> getScripts(Boolean all, List<String> codes, List<String> excluded = null) {
+        Map<String, ru.naumen.metainfo.shared.script.Script> map = [:]
         if (all) {
             getAllScripts().each {
-                scriptMap.put(it.code, it)
+                map.put(it.code, it)
             }
         } else {
             codes.each {
-                scriptMap.put(it, getScript(it))
+                map.put(it, getScript(it))
             }
         }
-        return scriptMap
+        if(excluded) excluded.each {
+            map.remove(it)
+        }
+        return map
     }
 
     ScriptModule getModule(String code) {
@@ -171,18 +177,21 @@ class SrcService {
         return scriptModulesStorageService.getUserModules()
     }
 
-    Map<String, ScriptModule> getModules(Boolean all, List<String> codes) {
-        Map<String, ScriptModule> modules = [:]
+    Map<String, ScriptModule> getModules(Boolean all, List<String> codes, List<String> excluded = null) {
+        Map<String, ScriptModule> map = [:]
         if (all) {
             getAllModules().each {
-                modules.put(it.code, it)
+                map.put(it.code, it)
             }
         } else {
             codes.each {
-                modules.put(it, getModule(it))
+                map.put(it, getModule(it))
             }
         }
-        return modules
+        if(excluded) excluded.each {
+            map.remove(it)
+        }
+        return map
     }
 
 }
@@ -228,6 +237,12 @@ class Dto {
         Boolean allScripts
         List<String> advImports
         Boolean allAdvImports
+    }
+
+    static class SrcRequestWithExclusion extends SrcRequest {
+        List<String> modulesExcluded
+        List<String> scriptsExcluded
+        List<String> advImportsExcluded
     }
 
     static class SrcInfo {
@@ -321,11 +336,11 @@ void getMetaClassInfo(HttpServletRequest request, HttpServletResponse response, 
 void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('POST')).process {
         WebApiUtilities webApiUtilities ->
-            Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequest)
+            Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
-            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts)
-            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports)
+            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded)
+            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded)
+            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
@@ -375,11 +390,11 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
 void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
     RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('POST').assertSuperuser()).process {
         WebApiUtilities webApiUtilities ->
-            Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequest)
+            Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
-            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts)
-            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports)
+            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded)
+            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded)
+            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
@@ -411,7 +426,7 @@ void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtOb
                         )
                 )
             }
-            Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo)
+            Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo, advImports : advImportsInfo)
             webApiUtilities.setBodyAsJson(rootInfo)
     }
 }
