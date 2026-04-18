@@ -134,10 +134,22 @@ class SrcService {
                 map.put(it, getAdvImport(it))
             }
         }
-        if(excluded) excluded.each {
+        if (excluded) excluded.each {
             map.remove(it)
         }
         return map
+    }
+
+    List<Dto.SrcOption> getAdvImportOptions(String lang = null) {
+        return getAllAdvImports().collect { advImport ->
+            String title
+            if (lang != null) title = advImport.title.find { it.lang == lang }?.value
+            if (title == null) title = advImport.title.first().value
+            return new Dto.SrcOption(
+                    code: advImport.uuid,
+                    title: title
+            )
+        }
     }
 
     ru.naumen.metainfo.shared.script.Script getScript(String code) {
@@ -161,10 +173,22 @@ class SrcService {
                 map.put(it, getScript(it))
             }
         }
-        if(excluded) excluded.each {
+        if (excluded) excluded.each {
             map.remove(it)
         }
         return map
+    }
+
+    List<Dto.SrcOption> getScriptOptions(String lang = null) {
+        return getAllScripts().collect { script ->
+            String title
+            if (lang != null) title = script.title.find { it.lang == lang }?.value
+            if (title == null) title = script.title.first().value
+            return new Dto.SrcOption(
+                    code: script.code,
+                    title: title
+            )
+        }
     }
 
     ScriptModule getModule(String code) {
@@ -188,10 +212,19 @@ class SrcService {
                 map.put(it, getModule(it))
             }
         }
-        if(excluded) excluded.each {
+        if (excluded) excluded.each {
             map.remove(it)
         }
         return map
+    }
+
+    List<Dto.SrcOption> getModuleOptions() {
+        return getAllModules().collect { module ->
+            return new Dto.SrcOption(
+                    code: module.code,
+                    title: module.code
+            )
+        }
     }
 
 }
@@ -254,6 +287,21 @@ class Dto {
         List<SrcInfo> modules
         List<SrcInfo> scripts
         List<SrcInfo> advImports
+    }
+
+    static class LocalizedString {
+        String lang
+        String value
+    }
+
+    static class SrcOption {
+        String title
+        String code
+    }
+
+    static class SrcOptionsContainer {
+        List<SrcOption> options = []
+        String lang
     }
 }
 
@@ -376,7 +424,7 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
                     )
                     Utilities.putZipEntry(zipStream, "scripts\\" + code + ".groovy", content.bytes)
                 }
-                Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo, advImports : advImportsInfo)
+                Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo, advImports: advImportsInfo)
                 ObjectMapper om = Utilities.getObjectMapper()
                 Utilities.putZipEntry(zipStream, "info.json", om.writeValueAsBytes(rootInfo))
             } catch (IOException e) {
@@ -386,7 +434,7 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
     }
 }
 
-@SuppressWarnings("unused")
+@SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
 void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
     RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('POST').assertSuperuser()).process {
         WebApiUtilities webApiUtilities ->
@@ -426,7 +474,48 @@ void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtOb
                         )
                 )
             }
-            Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo, advImports : advImportsInfo)
+            Dto.SrcInfoRoot rootInfo = new Dto.SrcInfoRoot(modules: modulesInfo, scripts: scriptsInfo, advImports: advImportsInfo)
             webApiUtilities.setBodyAsJson(rootInfo)
+    }
+}
+
+@SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
+void getScriptOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+        WebApiUtilities webApiUtilities ->
+            String lang = webApiUtilities.getParam("lang").orElse(null)
+            webApiUtilities.setBodyAsJson(
+                    new Dto.SrcOptionsContainer(
+                            lang: lang,
+                            options: new SrcService().getScriptOptions(lang)
+                    )
+            )
+    }
+}
+
+@SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
+void getModuleOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+        WebApiUtilities webApiUtilities ->
+            webApiUtilities.setBodyAsJson(
+                    new Dto.SrcOptionsContainer(
+                            lang: null,
+                            options: new SrcService().getModuleOptions()
+                    )
+            )
+    }
+}
+
+@SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
+void getAdvImportOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+        WebApiUtilities webApiUtilities ->
+            String lang = webApiUtilities.getParam("lang").orElse(null)
+            webApiUtilities.setBodyAsJson(
+                    new Dto.SrcOptionsContainer(
+                            lang: lang,
+                            options: new SrcService().getAdvImportOptions(lang)
+                    )
+            )
     }
 }
