@@ -178,11 +178,10 @@ class SrcService {
     }
 
     ScriptModule getModule(String code, Boolean throwIfNotFount = false) {
-        def obj = getModule(code)
+        def obj = scriptModulesStorageService.getModule(code).orElse(null)
         if (throwIfNotFount && obj == null) throw new WebApiException.BadRequest("Module ${code} not found")
         return obj
     }
-
 
     List<ScriptModule> getAllModules() {
         return scriptModulesStorageService.getUserModules()
