@@ -115,24 +115,22 @@ class SrcService {
     ScriptModulesStorageService scriptModulesStorageService = context.getBean(ScriptModulesStorageService)
     MetaStorageService metaStorageService = context.getBean(MetaStorageService)
 
-    ImportConfigContainer getAdvImport(String uuid) {
-        return metaStorageService.get('advimport', 'testImport1')
+    ImportConfigContainer getAdvImport(String uuid, Boolean throwIfNotFount) {
+        def obj = metaStorageService.get('advimport', uuid)
+        if (throwIfNotFount && obj == null) throw new WebApiException.BadRequest("AdvImport ${code} not found")
+        return obj
     }
 
     List<ImportConfigContainer> getAllAdvImports() {
         return metaStorageService.get('advimport')
     }
 
-    Map<String, ImportConfigContainer> getAdvImports(Boolean all, List<String> uuids, List<String> excluded = null) {
+    Map<String, ImportConfigContainer> getAdvImports(Boolean all, List<String> uuids, List<String> excluded, Boolean throwIfNotFount = false) {
         Map<String, ImportConfigContainer> map = [:]
-        if (all) {
-            getAllAdvImports().each {
-                map.put(it.getUUID(), it)
-            }
-        } else {
-            uuids.each {
-                map.put(it, getAdvImport(it))
-            }
+        if (all) getAllAdvImports().each { map.put(it.getUUID(), it) }
+        else uuids.each {
+            def obj = getAdvImport(it, throwIfNotFount)
+            if (obj) map.put(it, obj)
         }
         if (excluded) excluded.each {
             map.remove(it)
@@ -145,16 +143,13 @@ class SrcService {
             String title
             if (lang != null) title = advImport.title.find { it.lang == lang }?.value
             if (title == null) title = advImport.title.first().value
-            return new Dto.SrcOption(
-                    code: advImport.uuid,
-                    title: title
-            )
+            return new Dto.SrcOption(code: advImport.uuid, title: title)
         }
     }
 
-    ru.naumen.metainfo.shared.script.Script getScript(String code) {
+    ru.naumen.metainfo.shared.script.Script getScript(String code, Boolean throwIfNotFount = false) {
         def obj = scriptStorageService.getScript(code)
-        if (obj == null) throw new WebApiException.BadRequest("Script ${code} not found")
+        if (throwIfNotFount && obj == null) throw new WebApiException.BadRequest("Script ${code} not found")
         return obj
     }
 
@@ -162,20 +157,14 @@ class SrcService {
         return scriptStorageService.getScripts()
     }
 
-    Map<String, ru.naumen.metainfo.shared.script.Script> getScripts(Boolean all, List<String> codes, List<String> excluded = null) {
+    Map<String, ru.naumen.metainfo.shared.script.Script> getScripts(Boolean all, List<String> codes, List<String> excluded, Boolean throwIfNotFount = false) {
         Map<String, ru.naumen.metainfo.shared.script.Script> map = [:]
-        if (all) {
-            getAllScripts().each {
-                map.put(it.code, it)
-            }
-        } else {
-            codes.each {
-                map.put(it, getScript(it))
-            }
+        if (all) getAllScripts().each { map.put(it.code, it) }
+        else codes.each {
+            def obj = getScript(it, throwIfNotFount)
+            if (obj) map.put(it, obj)
         }
-        if (excluded) excluded.each {
-            map.remove(it)
-        }
+        if (excluded) excluded.each { map.remove(it) }
         return map
     }
 
@@ -184,46 +173,35 @@ class SrcService {
             String title
             if (lang != null) title = script.title.find { it.lang == lang }?.value
             if (title == null) title = script.title.first().value
-            return new Dto.SrcOption(
-                    code: script.code,
-                    title: title
-            )
+            return new Dto.SrcOption(code: script.code, title: title)
         }
     }
 
-    ScriptModule getModule(String code) {
-        def obj = scriptModulesStorageService.getModule(code).orElse(null)
-        if (obj == null) throw new WebApiException.BadRequest("Module ${code} not found")
+    ScriptModule getModule(String code, Boolean throwIfNotFount = false) {
+        def obj = getModule(code)
+        if (throwIfNotFount && obj == null) throw new WebApiException.BadRequest("Module ${code} not found")
         return obj
     }
+
 
     List<ScriptModule> getAllModules() {
         return scriptModulesStorageService.getUserModules()
     }
 
-    Map<String, ScriptModule> getModules(Boolean all, List<String> codes, List<String> excluded = null) {
+    Map<String, ScriptModule> getModules(Boolean all, List<String> codes, List<String> excluded, Boolean throwIfNotFount) {
         Map<String, ScriptModule> map = [:]
-        if (all) {
-            getAllModules().each {
-                map.put(it.code, it)
-            }
-        } else {
-            codes.each {
-                map.put(it, getModule(it))
-            }
+        if (all) getAllModules().each { map.put(it.code, it) }
+        else codes.each {
+            def obj = getModule(it, throwIfNotFount)
+            if (obj) map.put(it, obj)
         }
-        if (excluded) excluded.each {
-            map.remove(it)
-        }
+        if (excluded) excluded.each { map.remove(it) }
         return map
     }
 
     List<Dto.SrcOption> getModuleOptions() {
         return getAllModules().collect { module ->
-            return new Dto.SrcOption(
-                    code: module.code,
-                    title: module.code
-            )
+            return new Dto.SrcOption(code: module.code, title: module.code)
         }
     }
 
@@ -386,9 +364,9 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
-            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded)
-            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded)
+            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, true)
+            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, true)
+            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, true)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
@@ -440,9 +418,9 @@ void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtOb
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
-            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded)
-            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded)
+            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, false)
+            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, false)
+            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, false)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
