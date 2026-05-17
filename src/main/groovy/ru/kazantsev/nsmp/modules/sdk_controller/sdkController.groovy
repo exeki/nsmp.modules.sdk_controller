@@ -21,13 +21,13 @@ import ru.naumen.core.shared.dto.ISDtObject
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 
-import ru.naumen.core.server.script.modules.storage.ScriptModulesStorageService;
-import ru.naumen.core.server.script.storage.ScriptStorageService;
+import ru.naumen.core.server.script.modules.storage.ScriptModulesStorageService
+import ru.naumen.core.server.script.storage.ScriptStorageService
 import ru.naumen.core.server.script.modules.storage.ScriptModule
 import ru.naumen.core.server.SpringContext
-import ru.naumen.commons.server.utils.MessageDigestUtils;
+import ru.naumen.commons.server.utils.MessageDigestUtils
 import ru.naumen.core.server.script.modules.storage.ScriptContainer
-import ru.naumen.metainfo.shared.script.Script
+import ru.naumen.metainfo.shared.script.Script as NScript
 import ru.naumen.advimport.shared.ImportConfigContainer
 import ru.naumen.core.server.metastorage.impl.metainfo.MetaStorageService
 
@@ -75,7 +75,7 @@ class BranchCollector {
         }
 
         Boolean add(String metaClassCode) {
-            return this.add(api.metainfo.getMetaClass(fqn))
+            return this.add(api.metainfo.getMetaClass(metaClassCode))
         }
     }
 
@@ -97,11 +97,11 @@ class BranchCollector {
         if (container.add(someMetaCodeWrapper)) {
             List attrMetaClasses = someMetaCodeWrapper.getAttributes().findAll { it.getType().code in Constants.HAS_RELATED_METACLASS_CODES }.collect { it.getType().getRelatedMetaClass() }
             attrMetaClasses.each {
-                if (it == null) return;
+                if (it == null) return
                 process(it)
             }
             someMetaCodeWrapper.getChildren().each {
-                if (it == null) return;
+                if (it == null) return
                 process(it)
             }
         }
@@ -139,26 +139,26 @@ class SrcService {
     }
 
     List<Dto.SrcOption> getAdvImportOptions(String lang = null) {
-        return getAllAdvImports().collect { advImport ->
-            String title
+        return getAllAdvImports().collect { ImportConfigContainer advImport ->
+            String title = null
             if (lang != null) title = advImport.title.find { it.lang == lang }?.value
             if (title == null) title = advImport.title.first().value
             return new Dto.SrcOption(code: advImport.uuid, title: title)
         }
     }
 
-    ru.naumen.metainfo.shared.script.Script getScript(String code, Boolean throwIfNotFount = false) {
+    NScript getScript(String code, Boolean throwIfNotFount = false) {
         def obj = scriptStorageService.getScript(code)
         if (throwIfNotFount && obj == null) throw new WebApiException.BadRequest("Script ${code} not found")
         return obj
     }
 
-    List<ru.naumen.metainfo.shared.script.Script> getAllScripts() {
+    List<NScript> getAllScripts() {
         return scriptStorageService.getScripts()
     }
 
-    Map<String, ru.naumen.metainfo.shared.script.Script> getScripts(Boolean all, List<String> codes, List<String> excluded, Boolean throwIfNotFount = false) {
-        Map<String, ru.naumen.metainfo.shared.script.Script> map = [:]
+    Map<String, NScript> getScripts(Boolean all, List<String> codes, List<String> excluded, Boolean throwIfNotFount = false) {
+        Map<String, NScript> map = [:]
         if (all) getAllScripts().each { map.put(it.code, it) }
         else codes.each {
             def obj = getScript(it, throwIfNotFount)
@@ -170,7 +170,7 @@ class SrcService {
 
     List<Dto.SrcOption> getScriptOptions(String lang = null) {
         return getAllScripts().collect { script ->
-            String title
+            String title = null
             if (lang != null) title = script.title.find { it.lang == lang }?.value
             if (title == null) title = script.title.first().value
             return new Dto.SrcOption(code: script.code, title: title)
@@ -266,11 +266,6 @@ class Dto {
         List<SrcInfo> advImports
     }
 
-    static class LocalizedString {
-        String lang
-        String value
-    }
-
     static class SrcOption {
         String title
         String code
@@ -279,6 +274,26 @@ class Dto {
     static class SrcOptionsContainer {
         List<SrcOption> options = []
         String lang
+    }
+
+    static class AdminLog {
+        String categoryName
+        String category
+        Date actionDate
+        String authorLogin
+        String description
+        String uuid
+
+        static AdminLog fromObject(ISDtObject obj) {
+            return new AdminLog(
+                    categoryName: obj.categoryName,
+                    category: obj.category,
+                    actionDate: obj.actionDate as Date ,
+                    authorLogin: obj.authorLogin,
+                    description: obj.description,
+                    uuid: obj.UUID
+            )
+        }
     }
 }
 
@@ -364,12 +379,12 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
             Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, true)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, true)
+            Map<String, NScript> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, true)
             Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, true)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
             try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
                 advImports.each { code, object ->
                     String content = object.getConfigContainer().getConfig()
@@ -413,12 +428,12 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
 void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
-    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('POST').assertSuperuser()).process {
+    RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('POST')).process {
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
             Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, false)
-            Map<String, ru.naumen.metainfo.shared.script.Script> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, false)
+            Map<String, NScript> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, false)
             Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, false)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
@@ -458,7 +473,7 @@ void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtOb
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
 void getScriptOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
-    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+    RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String lang = webApiUtilities.getParam("lang").orElse(null)
             webApiUtilities.setBodyAsJson(
@@ -472,7 +487,7 @@ void getScriptOptions(HttpServletRequest request, HttpServletResponse response, 
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
 void getModuleOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
-    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+    RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             webApiUtilities.setBodyAsJson(
                     new Dto.SrcOptionsContainer(
@@ -485,7 +500,7 @@ void getModuleOptions(HttpServletRequest request, HttpServletResponse response, 
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
 void getAdvImportOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
-    RequestProcessor.create(request, response, user, new Preferences().assertHttpMethod('GET').assertSuperuser()).process {
+    RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String lang = webApiUtilities.getParam("lang").orElse(null)
             webApiUtilities.setBodyAsJson(
@@ -496,3 +511,25 @@ void getAdvImportOptions(HttpServletRequest request, HttpServletResponse respons
             )
     }
 }
+
+@SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
+void getSrcHistory(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+    RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
+        WebApiUtilities webApiUtilities ->
+            String type = webApiUtilities.getParamElseThrow("type")
+            String name = webApiUtilities.getParamElseThrow("name")
+            Integer page = webApiUtilities.getParamElseThrow("page", Integer)
+            Integer pageSize = webApiUtilities.getParamElseThrow("pageSize", Integer)
+
+            webApiUtilities.setBodyAsJson(
+                    utils.find(
+                            'adminLogRecord',
+                            ['category': op.like('%' + type + '%'), ' description ': op.like('%' + name + '%')],
+                            sp.limit(pageSize).offset((page - 1) * pageSize)
+                    ).collect {
+                        Dto.AdminLog.fromObject(it)
+                    }
+            )
+    }
+}
+
