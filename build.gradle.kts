@@ -48,7 +48,7 @@ repositories {
 
 dependencies {
     implementation("org.apache.groovy:groovy:4.0.14")
-    implementation("ru.kazantsev.nsd.sdk:global_variables:1.5.0")
+    implementation("ru.kazantsev.nsd.sdk:global_variables:1.6.0")
     implementation("ru.kazantsev.nsmp.modules:web_api_components:2.3.3")
 }
 

@@ -11,6 +11,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 import static ru.kazantsev.nsd.sdk.global_variables.ApiPlaceholder.*
+import static ru.kazantsev.nsd.sdk.global_variables.ControllerVariablesPlaceholder.*
 
 import ru.kazantsev.nsmp.modules.web_api_components.RequestProcessor
 import ru.kazantsev.nsmp.modules.web_api_components.WebApiException
