@@ -18,9 +18,6 @@ import ru.kazantsev.nsmp.modules.web_api_components.WebApiException
 import ru.naumen.core.server.script.api.metainfo.IMetaClassWrapper
 import ru.naumen.core.shared.dto.ISDtObject
 
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
-
 import ru.naumen.core.server.script.modules.storage.ScriptModulesStorageService
 import ru.naumen.core.server.script.storage.ScriptStorageService
 import ru.naumen.core.server.script.modules.storage.ScriptModule
@@ -276,6 +273,13 @@ class Dto {
         String lang
     }
 
+    static class ListContainer<T> {
+        Integer page
+        Integer pageSize
+        Long total
+        List<T> items
+    }
+
     static class AdminLog {
         String categoryName
         String category
@@ -288,7 +292,7 @@ class Dto {
             return new AdminLog(
                     categoryName: obj.categoryName,
                     category: obj.category,
-                    actionDate: obj.actionDate as Date ,
+                    actionDate: obj.actionDate as Date,
                     authorLogin: obj.authorLogin,
                     description: obj.description,
                     uuid: obj.UUID
@@ -334,7 +338,7 @@ private Dto.MetaClassWrapperDto getDtoFromMetaClassWrapper(IMetaClassWrapper met
 }
 
 @SuppressWarnings("unused")
-void getMetaClassBranchInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getMetaClassBranchInfo() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String meta = webApiUtilities.getParamElseThrow("meta")
@@ -346,7 +350,7 @@ void getMetaClassBranchInfo(HttpServletRequest request, HttpServletResponse resp
 }
 
 @SuppressWarnings("unused")
-void getMetaClassBranchesInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getMetaClassBranchesInfo() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String metasStr = webApiUtilities.getParamElseThrow("metas")
@@ -362,7 +366,7 @@ void getMetaClassBranchesInfo(HttpServletRequest request, HttpServletResponse re
 }
 
 @SuppressWarnings("unused")
-void getMetaClassInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getMetaClassInfo() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String meta = webApiUtilities.getParamElseThrow("meta")
@@ -373,7 +377,7 @@ void getMetaClassInfo(HttpServletRequest request, HttpServletResponse response, 
 }
 
 @SuppressWarnings("unused")
-void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getSrc() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('POST')).process {
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
@@ -427,7 +431,7 @@ void getSrc(HttpServletRequest request, HttpServletResponse response, ISDtObject
 }
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
-void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getSrcInfo() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('POST')).process {
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
@@ -472,7 +476,7 @@ void getSrcInfo(HttpServletRequest request, HttpServletResponse response, ISDtOb
 }
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
-void getScriptOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getScriptOptions() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String lang = webApiUtilities.getParam("lang").orElse(null)
@@ -486,7 +490,7 @@ void getScriptOptions(HttpServletRequest request, HttpServletResponse response, 
 }
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
-void getModuleOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getModuleOptions() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             webApiUtilities.setBodyAsJson(
@@ -499,7 +503,7 @@ void getModuleOptions(HttpServletRequest request, HttpServletResponse response, 
 }
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
-void getAdvImportOptions(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getAdvImportOptions() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String lang = webApiUtilities.getParam("lang").orElse(null)
@@ -513,22 +517,31 @@ void getAdvImportOptions(HttpServletRequest request, HttpServletResponse respons
 }
 
 @SuppressWarnings(["unused", 'GrMethodMayBeStatic'])
-void getSrcHistory(HttpServletRequest request, HttpServletResponse response, ISDtObject user) {
+void getSrcHistory() {
     RequestProcessor.create(request, response, user, prefs.copy().assertHttpMethod('GET')).process {
         WebApiUtilities webApiUtilities ->
             String type = webApiUtilities.getParamElseThrow("type")
             String name = webApiUtilities.getParamElseThrow("name")
             Integer page = webApiUtilities.getParamElseThrow("page", Integer)
             Integer pageSize = webApiUtilities.getParamElseThrow("pageSize", Integer)
-
+            Long total = utils.count(
+                    'adminLogRecord',
+                    ['category': op.like('%' + type + '%'), 'description': op.like('%' + name + '%')]
+            )
+            List<Dto.AdminLog> items = utils.find(
+                    'adminLogRecord',
+                    ['category': op.like('%' + type + '%'), 'description': op.like('%' + name + '%')],
+                    sp.limit(pageSize).offset((page - 1) * pageSize)
+            ).collect {
+                Dto.AdminLog.fromObject(it)
+            }
             webApiUtilities.setBodyAsJson(
-                    utils.find(
-                            'adminLogRecord',
-                            ['category': op.like('%' + type + '%'), ' description ': op.like('%' + name + '%')],
-                            sp.limit(pageSize).offset((page - 1) * pageSize)
-                    ).collect {
-                        Dto.AdminLog.fromObject(it)
-                    }
+                    new Dto.ListContainer(
+                            total: total,
+                            page: page,
+                            pageSize: pageSize,
+                            items: items
+                    )
             )
     }
 }

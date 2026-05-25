@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.kazantsev.nsmp.modules"
-version = "2.2.0"
+version = "2.3.0"
 
 tasks.javadoc {
     options.encoding = "UTF-8"
