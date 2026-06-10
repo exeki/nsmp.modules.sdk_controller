@@ -383,9 +383,9 @@ void getSrc() {
         WebApiUtilities webApiUtilities ->
             Dto.SrcRequest body = webApiUtilities.getBodyAsJsonElseThrow(Dto.SrcRequestWithExclusion)
             SrcService srcService = new SrcService()
-            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, true)
-            Map<String, NScript> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, true)
-            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, true)
+            Map<String, ScriptModule> modules = srcService.getModules(body.allModules, body.modules, body.modulesExcluded, false)
+            Map<String, NScript> scripts = srcService.getScripts(body.allScripts, body.scripts, body.scriptsExcluded, false)
+            Map<String, ImportConfigContainer> advImports = srcService.getAdvImports(body.allAdvImports, body.advImports, body.advImportsExcluded, false)
             List<Dto.SrcInfo> modulesInfo = []
             List<Dto.SrcInfo> scriptsInfo = []
             List<Dto.SrcInfo> advImportsInfo = []
